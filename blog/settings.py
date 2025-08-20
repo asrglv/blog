@@ -37,6 +37,9 @@ ALLOWED_HOSTS = []
 INSTALLED_APPS = [
     # my apps
     'accounts.apps.AccountsConfig',
+
+    # pip installed apps
+    'rest_framework',
     
     # Django default apps
     'django.contrib.admin',
