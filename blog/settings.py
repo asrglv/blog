@@ -41,7 +41,8 @@ INSTALLED_APPS = [
 
     # pip installed apps
     'rest_framework',
-    
+    'taggit',
+
     # Django default apps
     'django.contrib.admin',
     'django.contrib.auth',

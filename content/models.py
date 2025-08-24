@@ -2,6 +2,7 @@ from django.db import models
 from django.conf import settings
 from django.utils import timezone
 from django.utils.text import slugify
+from taggit.managers import TaggableManager
 
 
 USER = settings.AUTH_USER_MODEL
@@ -34,6 +35,7 @@ class Post(models.Model):
     status = models.CharField(max_length=10,
                               choices=Status.choices,
                               default=Status.DRAFT)
+    tags = TaggableManager()
     objects = models.Manager()
     published = PublishedManager()
 
