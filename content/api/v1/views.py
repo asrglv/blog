@@ -34,6 +34,12 @@ class PostViewSet(ModelViewSet):
     pagination_class = PostPagination
     
     def get_queryset(self):
+        status = self.request.query_params.get('status', None)
+        if status is not None:
+            if status == 'published':
+                return Post.published.all()
+            elif status == 'draft':
+                return Post.draft.all()
         return Post.objects.all()
 
     def get_serializer_class(self):

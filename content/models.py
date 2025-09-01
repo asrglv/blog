@@ -13,6 +13,11 @@ class PublishedManager(models.Manager):
         return super().get_queryset().filter(status='published')
 
 
+class DraftManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(status='draft')
+
+
 class Post(models.Model):
 
     class Status(models.TextChoices):
@@ -38,6 +43,7 @@ class Post(models.Model):
     tags = TaggableManager()
     objects = models.Manager()
     published = PublishedManager()
+    draft = DraftManager()
 
     class Meta:
         ordering = ('-publish',)
