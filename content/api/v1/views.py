@@ -42,3 +42,8 @@ class PostViewSet(ModelViewSet):
         elif self.action in ['create', 'update', 'partial_update']:
             return PostCreateUpdateSerializer
         return NotFound("Method not allowed")
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['action'] = self.action
+        return context

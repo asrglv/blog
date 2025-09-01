@@ -11,26 +11,48 @@ class TagSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class PostReadSerializer(serializers.ModelSerializer):
+class SimilarPostsSerializer(serializers.ModelSerializer):
     tags = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Post
+        fields = ['id', 'title', 'tags']
+
+    def get_tags(self, obj):
+        return obj.tags.values_list('name', flat=True)
+
+
+class PostReadSerializer(serializers.ModelSerializer):
+    tags = TagSerializer(many=True, read_only=True)
     author_username = serializers.SerializerMethodField()
     author_email = serializers.StringRelatedField(
         read_only=True,
         source='author'
     )
+    similar_posts = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = ['id', 'title', 'slug', 'author_id',
                   'author_username', 'author_email', 'body',
                   'publish', 'created_at', 'updated_at',
-                  'users_liked', 'users_disliked', 'tags', 'status']
+                  'users_liked', 'users_disliked',
+                  'similar_posts', 'tags', 'status']
 
     def get_author_username(self, obj):
         return obj.author.username
 
-    def get_tags(self, obj):
-        return TagSerializer(obj.tags.all(), many=True).data
+    def get_similar_posts(self, obj):
+        tags_ids = obj.tags.values_list('id', flat=True)
+        similar_posts = Post.published.filter(
+            tags__in=tags_ids).exclude(id=obj.id).distinct()
+        return SimilarPostsSerializer(similar_posts, many=True).data
+
+    def get_fields(self):
+        fields = super().get_fields()
+        if self.context['action'] == 'list':
+            fields.pop('similar_posts')
+        return fields
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):

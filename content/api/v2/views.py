@@ -51,6 +51,14 @@ class PostListCreateAPIView(generics.ListCreateAPIView):
             return PostCreateUpdateSerializer
         return NotFound('Method Not allowed')
 
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.request.method == 'GET':
+            context['action'] = 'list'
+        elif self.request.method == 'POST':
+            context['action'] = 'create'
+        return context
+
 
 class PostRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
@@ -62,3 +70,13 @@ class PostRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         elif self.request.method in ['PUT', 'PATCH']:
             return PostCreateUpdateSerializer
         return NotFound('Method Not allowed')
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.request.method == 'GET':
+            context['action'] = 'retrieve'
+        elif self.request.method == 'POST':
+            context['action'] = 'update'
+        elif self.request.method == 'PATCH':
+            context['action'] = 'partial_update'
+        return context
