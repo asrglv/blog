@@ -50,7 +50,7 @@ class PostReadSerializer(serializers.ModelSerializer):
 
     def get_fields(self):
         fields = super().get_fields()
-        if self.context['action'] == 'list':
+        if self.context.get('action') or self.context['action'] == 'search':
             fields.pop('similar_posts')
         return fields
 

@@ -24,8 +24,8 @@ class Post(models.Model):
         DRAFT = 'draft', 'Draft'
         PUBLISHED = 'published', 'Published'
 
-    title = models.CharField(max_length=100)
-    slug = models.SlugField(max_length=100)
+    title = models.CharField(max_length=100, unique=True)
+    slug = models.SlugField(max_length=100, unique=True)
     author = models.ForeignKey(
         USER,
         on_delete=models.CASCADE,
