@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from content.models import Post
+from content.models import Post, Comment
 from taggit.models import Tag
 
 
@@ -79,3 +79,15 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         if tags is not None:
             instance.tags.set(tags)
         return super().update(instance, validated_data)
+
+
+class CommentReadSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = '__all__'
+
+
+class CommentCreateUpdateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Comment
+        fields = ['post', 'body', 'active']
