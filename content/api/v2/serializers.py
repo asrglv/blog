@@ -63,10 +63,12 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['title', 'author', 'body', 'tags', 'status']
+        fields = ['title', 'body', 'tags', 'status']
 
     def create(self, validated_data):
         tags = validated_data.pop('tags')
+        user = self.context['request'].user
+        validated_data['author'] = user
         post = super().create(validated_data)
         if tags is not None:
             post.tags.set(tags)
