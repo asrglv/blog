@@ -91,3 +91,15 @@ class CommentCreateUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Comment
         fields = ['post', 'body', 'active']
+
+    def create(self, validated_data):
+        user = self.context['request'].user
+        validated_data['user'] = user
+        return super().create(validated_data)
+
+    def get_fields(self):
+        fields = super().get_fields()
+        user = self.context['request'].user
+        if not user.is_superuser:
+            fields.pop('active')
+        return fields

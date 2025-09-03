@@ -139,7 +139,11 @@ class CommentViewSet(ModelViewSet):
 
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
-        if status is not None:
+
+        permission = IsSuperuser()
+        is_access = permission.has_permission(self.request, self)
+
+        if status is not None and is_access:
             if status == 'all':
                 return Comment.objects.all()
             elif status == 'disabled':
@@ -155,3 +159,8 @@ class CommentViewSet(ModelViewSet):
         context = super().get_serializer_context()
         context['action'] = self.action
         return context
+
+    def get_permissions(self):
+        if self.action in ['list', 'retrieve', 'create']:
+            return [permissions.IsAuthenticatedOrReadOnly()]
+        return [IsSuperuser()]

@@ -1,6 +1,7 @@
 from django.contrib.postgres.search import TrigramSimilarity
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticatedOrReadOnly
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -181,7 +182,11 @@ class CommentListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
-        if status is not None:
+
+        permission = IsSuperuser()
+        is_access = permission.has_permission(self.request, self)
+
+        if status is not None and is_access:
             if status == 'all':
                 return Comment.objects.all()
             elif status == 'disabled':
@@ -200,6 +205,9 @@ class CommentListCreateAPIView(ListCreateAPIView):
         elif self.request.method == 'POST':
             context['action'] = 'create'
         return context
+
+    def get_permissions(self):
+        return [IsAuthenticatedOrReadOnly()]
 
 
 class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
@@ -220,3 +228,8 @@ class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
         elif self.request.method == 'PATCH':
             context['action'] = 'partial_update'
         return context
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.IsAuthenticatedOrReadOnly()]
+        return [IsSuperuser()]
