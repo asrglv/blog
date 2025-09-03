@@ -24,4 +24,5 @@ urlpatterns = [
 
     path('api/v1/content/', include('content.api.v1.urls')),
     path('api/v2/content/', include('content.api.v2.urls')),
+    path('__debug__/', include('debug_toolbar.urls')),
 ]
