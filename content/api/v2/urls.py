@@ -3,11 +3,19 @@ from .views import (PostListCreateAPIView,
                     PostRetrieveUpdateDestroyAPIView,
                     TagCreateListAPIView,
                     TagRetrieveUpdateDestroyAPIView,
-                    SearchAPIView)
+                    SearchAPIView,
+                    CommentListCreateAPIView,
+                    CommentRetrieveUpdateDestroyAPIView)
 
 
 urlpatterns = [
-    path('posts/search/', SearchAPIView.as_view(), name='search'),
+    path('search/', SearchAPIView.as_view(),
+         name='search'),
+    path('comments/', CommentListCreateAPIView.as_view(),
+         name='comments'),
+    path('comments/<int:pk>/',
+         CommentRetrieveUpdateDestroyAPIView.as_view(),
+         name='comment-detail'),
     path('posts/', PostListCreateAPIView.as_view(),
          name='post-list'),
     path('posts/<int:pk>/', PostRetrieveUpdateDestroyAPIView.as_view(),
