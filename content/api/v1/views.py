@@ -5,11 +5,13 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
-from content.models import Post
+from content.models import Post, Comment
 from taggit.models import Tag
 from .serializers import (PostReadSerializer,
                           PostCreateUpdateSerializer,
-                          TagSerializer,)
+                          TagSerializer,
+                          CommentReadSerializer,
+                          CommentCreateUpdateSerializer)
 from content.api.permissions import (IsSuperuser,
                                      IsOwnerOrSuperuser,
                                      IsOwnerOrReadOnlyOrSuperuser)
@@ -40,6 +42,12 @@ class PostPagination(PaginationMixin, PageNumberPagination):
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 20
+
+
+class CommentPagination(PaginationMixin, PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 50
 
 
 class TagViewSet(ModelViewSet):
@@ -124,3 +132,26 @@ class SearchAPIView(APIView):
 
     def get_queryset(self):
         return Post.published.all()
+
+
+class CommentViewSet(ModelViewSet):
+    pagination_class = CommentPagination
+
+    def get_queryset(self):
+        status = self.request.query_params.get('status', None)
+        if status is not None:
+            if status == 'all':
+                return Comment.objects.all()
+            elif status == 'disabled':
+                return Comment.objects.filter(active=False)
+        return Comment.objects.filter(active=True)
+
+    def get_serializer_class(self):
+        if self.action in ['list', 'retrieve']:
+            return CommentReadSerializer
+        return CommentCreateUpdateSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        context['action'] = self.action
+        return context

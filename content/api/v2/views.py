@@ -1,15 +1,18 @@
 from django.contrib.postgres.search import TrigramSimilarity
-from rest_framework import generics
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
-from content.models import Post
+from rest_framework.generics import (ListCreateAPIView,
+                                     RetrieveUpdateDestroyAPIView)
+from content.models import Post, Comment
 from taggit.models import Tag
 from .serializers import (PostReadSerializer,
                           PostCreateUpdateSerializer,
-                          TagSerializer)
+                          TagSerializer,
+                          CommentReadSerializer,
+                          CommentCreateUpdateSerializer)
 from content.api.permissions import (IsSuperuser,
                                      IsOwnerOrSuperuser,
                                      IsOwnerOrReadOnlyOrSuperuser)
@@ -42,7 +45,13 @@ class PostPagination(PaginationMixin, PageNumberPagination):
     max_page_size = 20
 
 
-class TagCreateListAPIView(generics.ListCreateAPIView):
+class CommentPagination(PaginationMixin, PageNumberPagination):
+    page_size = 20
+    page_size_query_param = 'page_size'
+    max_page_size = 50
+
+
+class TagCreateListAPIView(ListCreateAPIView):
     pagination_class = TagPagination
 
     def get_queryset(self):
@@ -52,7 +61,7 @@ class TagCreateListAPIView(generics.ListCreateAPIView):
         return TagSerializer
 
 
-class TagRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+class TagRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         return Tag.objects.all()
 
@@ -60,7 +69,7 @@ class TagRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         return TagSerializer
 
 
-class PostListCreateAPIView(generics.ListCreateAPIView):
+class PostListCreateAPIView(ListCreateAPIView):
     pagination_class = PostPagination
 
     def get_queryset(self):
@@ -97,7 +106,7 @@ class PostListCreateAPIView(generics.ListCreateAPIView):
         return [permissions.AllowAny()]
 
 
-class PostRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+class PostRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
 
@@ -165,3 +174,49 @@ class SearchAPIView(APIView):
 
     def get_queryset(self):
         return Post.published.all()
+
+
+class CommentListCreateAPIView(ListCreateAPIView):
+    pagination_class = CommentPagination
+
+    def get_queryset(self):
+        status = self.request.query_params.get('status', None)
+        if status is not None:
+            if status == 'all':
+                return Comment.objects.all()
+            elif status == 'disabled':
+                return Comment.objects.filter(active=False)
+        return Comment.objects.filter(active=True)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return CommentReadSerializer
+        return CommentCreateUpdateSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.request.method == 'GET':
+            context['action'] = 'list'
+        elif self.request.method == 'POST':
+            context['action'] = 'create'
+        return context
+
+
+class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
+    def get_queryset(self):
+        return Comment.objects.filter(active=True)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return CommentReadSerializer
+        return CommentCreateUpdateSerializer
+
+    def get_serializer_context(self):
+        context = super().get_serializer_context()
+        if self.request.method == 'GET':
+            context['action'] = 'retrieve'
+        elif self.request.method == 'POST':
+            context['action'] = 'update'
+        elif self.request.method == 'PATCH':
+            context['action'] = 'partial_update'
+        return context
