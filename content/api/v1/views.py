@@ -4,11 +4,15 @@ from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
+from rest_framework import permissions
 from content.models import Post
 from taggit.models import Tag
 from .serializers import (PostReadSerializer,
                           PostCreateUpdateSerializer,
-                          TagSerializer)
+                          TagSerializer,)
+from content.api.permissions import (IsSuperuser,
+                                     IsOwnerOrSuperuser,
+                                     IsOwnerOrReadOnlyOrSuperuser)
 
 
 class PaginationMixin:
@@ -40,6 +44,7 @@ class PostPagination(PaginationMixin, PageNumberPagination):
 
 class TagViewSet(ModelViewSet):
     pagination_class = TagPagination
+    permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
         return Tag.objects.all()
@@ -53,12 +58,20 @@ class PostViewSet(ModelViewSet):
     
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
-        if status is not None:
-            if status == 'published':
-                return Post.published.all()
+
+        permission = IsOwnerOrSuperuser()
+        is_access = permission.has_object_permission(self.request, self)
+
+        if status is not None and is_access:
+            if status == 'all':
+                return Post.objects.all()
             elif status == 'draft':
                 return Post.draft.all()
-        return Post.objects.all()
+
+        if self.action != 'list' and is_access:
+            return Post.objects.all()
+
+        return Post.published.all()
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
@@ -72,6 +85,11 @@ class PostViewSet(ModelViewSet):
         context['action'] = self.action
         return context
 
+    def get_permissions(self):
+        if self.action == 'create':
+            return [permissions.IsAuthenticated()]
+        return [IsOwnerOrReadOnlyOrSuperuser()]
+
 
 class SearchAPIView(APIView):
     def get(self, request):
@@ -80,17 +98,20 @@ class SearchAPIView(APIView):
         query = self.request.query_params.get('query', None)
         search_rating = 0.1
 
+        permission = IsSuperuser()
+        is_access = permission.has_permission(self.request, self)
+
         if query is not None:
-            if status == 'published':
-                posts = Post.published.annotate(
+            if status == 'all' and is_access:
+                posts = Post.objects.annotate(
                     similarity=TrigramSimilarity('title', query)
                 ).filter(similarity__gte=search_rating).order_by('-similarity')
-            elif status == 'draft':
+            elif status == 'draft' and is_access:
                 posts = Post.draft.annotate(
                     similarity=TrigramSimilarity('title', query)
                 ).filter(similarity__gte=search_rating).order_by('-similarity')
             else:
-                posts = Post.objects.annotate(
+                posts = Post.published.annotate(
                     similarity=TrigramSimilarity('title', query)
                 ).filter(similarity__gte=search_rating).order_by('-similarity')
 
@@ -100,5 +121,6 @@ class SearchAPIView(APIView):
             serializer = PostReadSerializer(page, many=True, context=context)
             return paginator.get_paginated_response(serializer.data)
         return Response()
+
     def get_queryset(self):
         return Post.published.all()
