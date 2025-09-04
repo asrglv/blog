@@ -27,6 +27,8 @@ class PostReadSerializer(serializers.ModelSerializer):
         read_only=True,
         source='author'
     )
+    users_liked = serializers.StringRelatedField(many=True, read_only=True)
+    users_disliked = serializers.StringRelatedField(many=True, read_only=True)
     similar_posts = serializers.SerializerMethodField()
 
     class Meta:
@@ -104,3 +106,9 @@ class CommentCreateUpdateSerializer(serializers.ModelSerializer):
         if not user.is_superuser:
             fields.pop('active')
         return fields
+
+
+class LikeSerializer(serializers.Serializer):
+    post = serializers.PrimaryKeyRelatedField(
+        queryset=Post.published.all(),
+    )

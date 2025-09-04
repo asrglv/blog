@@ -1,10 +1,13 @@
 from rest_framework import generics
+from rest_framework.response import Response
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import IsAuthenticated
 from accounts.models import User
 from .serializers import (UserReadSerializer,
                           UserCreateSerializer,
-                          UserUpdateSerializer)
+                          UserUpdateSerializer,
+                          ChangePasswordSerializer)
 from accounts.api.permissions import IsOwnerOrReadOnlyOrSuperuser
 
 
@@ -41,3 +44,15 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         elif self.request.method in ['PUT', 'PATCH']:
             return UserUpdateSerializer
         return NotFound('Method not allowed')
+
+
+class ChangePasswordAPIView(generics.GenericAPIView):
+    serializer_class = ChangePasswordSerializer
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        if serializer.is_valid(raise_exception=True):
+            serializer.save()
+            return Response({'detail': 'Password was changed.'})
+        return Response(serializer)

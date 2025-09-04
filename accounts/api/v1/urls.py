@@ -1,6 +1,6 @@
 from django.urls import path, include
 from rest_framework.routers import SimpleRouter
-from .views import UserModelViewSet
+from .views import UserModelViewSet, ChangePasswordAPIView
 from rest_framework_simplejwt.views import (TokenObtainPairView,
                                             TokenRefreshView,
                                             TokenBlacklistView)
@@ -16,5 +16,7 @@ urlpatterns = [
          name='token_refresh'),
     path('auth/token/blacklist/', TokenBlacklistView.as_view(),
          name='token_blacklist'),
+    path('change-password/', ChangePasswordAPIView.as_view(),
+         name='change_password'),
     path('', include(router.urls)),
 ]

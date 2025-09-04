@@ -6,14 +6,16 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
 from rest_framework.generics import (ListCreateAPIView,
-                                     RetrieveUpdateDestroyAPIView)
+                                     RetrieveUpdateDestroyAPIView,
+                                     GenericAPIView)
 from content.models import Post, Comment
 from taggit.models import Tag
 from .serializers import (PostReadSerializer,
                           PostCreateUpdateSerializer,
                           TagSerializer,
                           CommentReadSerializer,
-                          CommentCreateUpdateSerializer)
+                          CommentCreateUpdateSerializer,
+                          LikeSerializer)
 from content.api.permissions import (IsSuperuser,
                                      is_owner_or_superuser,
                                      IsOwnerOrReadOnlyOrSuperuser)
@@ -250,3 +252,54 @@ class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
         if self.request.method == 'GET':
             return [permissions.IsAuthenticatedOrReadOnly()]
         return [IsSuperuser()]
+
+
+
+class LikeAPIView(GenericAPIView):
+    serializer_class = LikeSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = self.request.user
+        post_id = serializer.data['post']
+        post = Post.objects.get(pk=post_id)
+
+        if post.users_liked.filter(id=user.id).exists():
+            post.users_liked.remove(user)
+            return Response(
+                {'detail': f'User {user.username} unliked post {post}'}
+            )
+
+        if post.users_disliked.filter(id=user.id).exists():
+            post.users_disliked.remove(user)
+        post.users_liked.add(user)
+
+        return Response(
+            {'detail': f'User {user.username} liked post {post}'}
+        )
+
+
+class DislikeAPIView(GenericAPIView):
+    serializer_class = LikeSerializer
+
+    def post(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = self.request.user
+        post_id = serializer.data['post']
+        post = Post.objects.get(pk=post_id)
+
+        if post.users_disliked.filter(id=user.id).exists():
+            post.users_disliked.remove(user)
+            return Response(
+                {'detail': f'User {user.username} undisliked post {post}'}
+            )
+
+        if post.users_liked.filter(id=user.id).exists():
+            post.users_liked.remove(user)
+        post.users_disliked.add(user)
+
+        return Response(
+            {'detail': f'User {user.username} disliked post {post}'}
+        )
