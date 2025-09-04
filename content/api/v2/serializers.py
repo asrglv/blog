@@ -5,6 +5,11 @@ from taggit.serializers import TagListSerializerField
 
 
 class TagSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Tag model.
+
+    Used for representing, creating and updating tags.
+    """
     slug = serializers.SlugField(read_only=True)
 
     class Meta:
@@ -13,6 +18,11 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class SimilarPostsSerializer(serializers.ModelSerializer):
+    """
+    Serializer for similar posts.
+
+    Used for representing similar posts.
+    """
     tags = TagListSerializerField()
 
     class Meta:
@@ -21,6 +31,11 @@ class SimilarPostsSerializer(serializers.ModelSerializer):
 
 
 class PostReadSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Post model.
+
+    Used for representing posts.
+    """
     tags = TagSerializer(many=True, read_only=True)
     author_username = serializers.SerializerMethodField()
     author_email = serializers.StringRelatedField(
@@ -37,7 +52,7 @@ class PostReadSerializer(serializers.ModelSerializer):
                   'author_username', 'author_email', 'body',
                   'publish', 'created_at', 'updated_at',
                   'users_liked', 'users_disliked',
-                  'similar_posts', 'tags', 'status']
+                  'tags', 'similar_posts', 'status']
 
     def get_author_username(self, obj):
         return obj.author.username
@@ -56,6 +71,11 @@ class PostReadSerializer(serializers.ModelSerializer):
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Post model.
+
+    Used for creating and updating posts.
+    """
     tags = serializers.PrimaryKeyRelatedField(
         many=True,
         queryset=Tag.objects.all(),
@@ -66,6 +86,11 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         fields = ['title', 'body', 'tags', 'status']
 
     def create(self, validated_data):
+        """
+        Sets the authenticated user as the author and assigns tags
+
+        after the post is created.
+        """
         tags = validated_data.pop('tags')
         user = self.context['request'].user
         validated_data['author'] = user
@@ -75,6 +100,9 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
         return post
 
     def update(self, instance, validated_data):
+        """
+        Assigns tags if provided in validated_data and updates other fields.
+        """
         tags = validated_data.pop('tags')
         if tags is not None:
             instance.tags.set(tags)
@@ -82,25 +110,41 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class CommentReadSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Comment model.
+
+    Used for representing comments.
+    """
+    user = serializers.StringRelatedField(read_only=True)
+    post = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Comment
         fields = '__all__'
 
 
 class CommentCreateUpdateSerializer(serializers.ModelSerializer):
-    user = serializers.StringRelatedField(read_only=True)
-    post = serializers.StringRelatedField(read_only=True)
+    """
+    Serializer for the Comment model.
 
+    Used for creating and updating comments.
+    """
     class Meta:
         model = Comment
         fields = ['post', 'body', 'active']
 
     def create(self, validated_data):
+        """
+        Sets the authenticated user as the comment's user.
+        """
         user = self.context['request'].user
         validated_data['user'] = user
         return super().create(validated_data)
 
     def get_fields(self):
+        """
+        Removes the 'active' field for non-superusers.
+        """
         fields = super().get_fields()
         user = self.context['request'].user
         if not user.is_superuser:
@@ -109,6 +153,11 @@ class CommentCreateUpdateSerializer(serializers.ModelSerializer):
 
 
 class LikeSerializer(serializers.Serializer):
+    """
+    Serializer for like and dislike functions.
+
+    Used for validating post.
+    """
     post = serializers.PrimaryKeyRelatedField(
         queryset=Post.published.all(),
     )

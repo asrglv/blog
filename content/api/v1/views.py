@@ -20,6 +20,9 @@ from content.api.permissions import (IsSuperuser,
 
 
 class PaginationMixin:
+    """
+    Mixin for safe pagination with fallback for invalid pages.
+    """
     def paginate_queryset(self, queryset, request, view=None):
         try:
             return super().paginate_queryset(queryset, request, view)
@@ -35,24 +38,39 @@ class PaginationMixin:
 
 
 class TagPagination(PaginationMixin, PageNumberPagination):
+    """
+    Pagination class for the Tag model.
+    """
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 50
 
 
 class PostPagination(PaginationMixin, PageNumberPagination):
+    """
+    Pagination class for the Post model.
+    """
     page_size = 10
     page_size_query_param = 'page_size'
     max_page_size = 20
 
 
 class CommentPagination(PaginationMixin, PageNumberPagination):
+    """
+    Pagination class for the Comment model.
+    """
     page_size = 20
     page_size_query_param = 'page_size'
     max_page_size = 50
 
 
 class TagViewSet(ModelViewSet):
+    """
+    API endpoint for managing tags.
+
+    Provides list, retrieve, create, update, and delete actions
+    for Tag instances.
+    """
     pagination_class = TagPagination
     permission_classes = [permissions.IsAdminUser]
 
@@ -64,9 +82,22 @@ class TagViewSet(ModelViewSet):
 
 
 class PostViewSet(ModelViewSet):
+    """
+    API endpoint for managing posts.
+
+    Provides list, retrieve, create, update, and delete actions
+    for Post instances.
+    """
     pagination_class = PostPagination
     
     def get_queryset(self):
+        """
+        Return a queryset of Post instances based on user permissions and status filter.
+
+        Admins or owners can access all posts or drafts if 'status' is specified.
+        Non-owners see only published posts.
+        Optimizes queries with select_related and prefetch_related.
+        """
         status = self.request.query_params.get('status', None)
         is_access = is_owner_or_superuser(self.request, self)
 
@@ -108,7 +139,18 @@ class PostViewSet(ModelViewSet):
 
 
 class SearchAPIView(APIView):
+    """
+    API endpoint for searching posts.
+    """
     def get(self, request):
+        """
+        Return search results of Post instances filtered by user permissions and status.
+
+        Admins can access all posts or drafts if 'status' is specified.
+        Non-admins see only published posts.
+        Optimizes queries with select_related and prefetch_related.
+        """
+
         context = {'action': 'search'}
         status = request.query_params.get('status', None)
         query = self.request.query_params.get('query', None)
@@ -150,9 +192,22 @@ class SearchAPIView(APIView):
 
 
 class CommentViewSet(ModelViewSet):
+    """
+    API endpoint for managing comments.
+
+    Provides list, retrieve, create, update, and delete actions
+    for Comment instances.
+    """
     pagination_class = CommentPagination
 
     def get_queryset(self):
+        """
+        Return a queryset of Comment instances based on user permissions and status filter.
+
+        Admins can access all comments if 'status' is specified.
+        Non-admins see only active comments.
+        Optimizes queries with select_related.
+        """
         status = self.request.query_params.get('status', None)
         is_access = is_owner_or_superuser(self.request, self)
 
@@ -185,6 +240,9 @@ class CommentViewSet(ModelViewSet):
 
 
 class LikeAPIView(GenericAPIView):
+    """
+    API endpoint for liking posts.
+    """
     serializer_class = LikeSerializer
 
     def post(self, request, *args, **kwargs):
@@ -210,6 +268,9 @@ class LikeAPIView(GenericAPIView):
 
 
 class DislikeAPIView(GenericAPIView):
+    """
+    API endpoint for disliking posts.
+    """
     serializer_class = LikeSerializer
 
     def post(self, request, *args, **kwargs):

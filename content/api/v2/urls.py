@@ -11,8 +11,10 @@ from .views import (PostListCreateAPIView,
 
 
 urlpatterns = [
-    path('like/', LikeAPIView.as_view(), name='like'),
-    path('dislike/', DislikeAPIView.as_view(), name='dislike'),
+    path('like/', LikeAPIView.as_view(),
+         name='like'),
+    path('dislike/', DislikeAPIView.as_view(),
+         name='dislike'),
     path('search/', SearchAPIView.as_view(),
          name='search'),
     path('comments/', CommentListCreateAPIView.as_view(),

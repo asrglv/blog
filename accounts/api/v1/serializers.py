@@ -4,6 +4,10 @@ from rest_framework import serializers
 
 
 class UserReadSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the User model.
+    Used for representing users.
+    """
     class Meta:
         model = User
         fields = ['id', 'username', 'name', 'surname', 'email',
@@ -12,6 +16,10 @@ class UserReadSerializer(serializers.ModelSerializer):
 
 
 class UserCreateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the User model.
+    Used for creating users.
+    """
     password = serializers.CharField(write_only=True)
     password2 = serializers.CharField(write_only=True)
 
@@ -39,12 +47,19 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
 
 class UserUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the User model.
+    Used for updating users.
+    """
     class Meta:
         model = User
         fields = ['username', 'name', 'surname', 'email']
 
 
 class ChangePasswordSerializer(serializers.Serializer):
+    """
+    Serializer for changing password.
+    """
     current_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True)
     confirm_password = serializers.CharField(write_only=True)
