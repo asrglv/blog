@@ -5,6 +5,7 @@ from accounts.models import User
 from .serializers import (UserReadSerializer,
                           UserCreateSerializer,
                           UserUpdateSerializer)
+from accounts.api.permissions import IsOwnerOrReadOnlyOrSuperuser
 
 
 class UserPagination(PageNumberPagination):
@@ -15,6 +16,7 @@ class UserPagination(PageNumberPagination):
 
 class UserModelViewSet(ModelViewSet):
     pagination_class = UserPagination
+    permission_classes = [IsOwnerOrReadOnlyOrSuperuser]
 
     def get_queryset(self):
         return User.objects.all()

@@ -10,6 +10,7 @@ class PostAdmin(admin.ModelAdmin):
     list_filter = ['status', 'publish', 'created_at', 'updated_at']
     search_fields = ['id', 'title', 'slug']
     prepopulated_fields = {'slug': ('title',)}
+    list_editable = ['status']
 
 
 @admin.register(Comment)

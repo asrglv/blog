@@ -5,20 +5,25 @@ from content.models import Post
 SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 
 
+def is_owner_or_superuser(request, view):
+    user = request.user
+    if not user.is_authenticated:
+        return False
+    if user.is_superuser:
+        return True
+    pk = view.kwargs.get('pk', None)
+    if pk is not None:
+        try:
+            obj = Post.objects.get(pk=pk)
+            return obj.author == user
+        except Post.DoesNotExist:
+            return False
+
+
 class IsSuperuser(BasePermission):
     def has_permission(self, request, view):
         if request.user.is_authenticated:
             return request.user.is_superuser
-
-
-class IsOwnerOrSuperuser(BasePermission):
-    def has_object_permission(self, request, view, obj=None):
-        pk = view.kwargs.get('pk', None)
-        if obj is None and pk is not None:
-            obj = Post.objects.get(pk=pk)
-        if request.user.is_authenticated:
-            return (request.user.is_superuser or
-                    obj is not None and obj.author == request.user)
 
 
 class IsOwnerOrReadOnlyOrSuperuser(BasePermission):

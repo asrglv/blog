@@ -15,7 +15,7 @@ from .serializers import (PostReadSerializer,
                           CommentReadSerializer,
                           CommentCreateUpdateSerializer)
 from content.api.permissions import (IsSuperuser,
-                                     IsOwnerOrSuperuser,
+                                     is_owner_or_superuser,
                                      IsOwnerOrReadOnlyOrSuperuser)
 
 
@@ -75,9 +75,7 @@ class PostListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
-
-        permission = IsOwnerOrSuperuser()
-        is_access = permission.has_object_permission(self.request, self)
+        is_access = is_owner_or_superuser(self.request, self)
 
         if status is not None and is_access:
             if status == 'all':
@@ -116,9 +114,7 @@ class PostListCreateAPIView(ListCreateAPIView):
 class PostRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
-
-        permission = IsOwnerOrSuperuser()
-        is_access = permission.has_object_permission(self.request, self)
+        is_access = is_owner_or_superuser(self.request, self)
 
         if status is not None and is_access:
             if status == 'all':
@@ -160,9 +156,7 @@ class SearchAPIView(APIView):
         status = request.query_params.get('status', None)
         query = self.request.query_params.get('query', None)
         search_rating = 0.1
-
-        permission = IsSuperuser()
-        is_access = permission.has_permission(self.request, self)
+        is_access = is_owner_or_superuser(self.request, self)
 
         if query is not None:
             if status == 'all' and is_access:
@@ -203,9 +197,7 @@ class CommentListCreateAPIView(ListCreateAPIView):
 
     def get_queryset(self):
         status = self.request.query_params.get('status', None)
-
-        permission = IsSuperuser()
-        is_access = permission.has_permission(self.request, self)
+        is_access = is_owner_or_superuser(self.request, self)
 
         if status is not None and is_access:
             if status == 'all':
@@ -233,8 +225,7 @@ class CommentListCreateAPIView(ListCreateAPIView):
 
 class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
     def get_queryset(self):
-        permission = IsSuperuser()
-        is_access = permission.has_permission(self.request, self)
+        is_access = is_owner_or_superuser(self.request, self)
         if is_access:
             return Comment.objects.select_related('user', 'post')
         return Comment.objects.filter(

@@ -5,6 +5,7 @@ from accounts.models import User
 from .serializers import (UserReadSerializer,
                           UserCreateSerializer,
                           UserUpdateSerializer)
+from accounts.api.permissions import IsOwnerOrReadOnlyOrSuperuser
 
 
 class UserPagination(PageNumberPagination):
@@ -15,6 +16,7 @@ class UserPagination(PageNumberPagination):
 
 class UserListCreateAPIView(generics.ListCreateAPIView):
     pagination_class = UserPagination
+    permission_classes = [IsOwnerOrReadOnlyOrSuperuser]
 
     def get_queryset(self):
         return User.objects.all()
@@ -28,6 +30,8 @@ class UserListCreateAPIView(generics.ListCreateAPIView):
 
 
 class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
+    permission_classes = [IsOwnerOrReadOnlyOrSuperuser]
+
     def get_queryset(self):
         return User.objects.all()
 
@@ -35,5 +39,5 @@ class UserRetrieveUpdateDestroyAPIView(generics.RetrieveUpdateDestroyAPIView):
         if self.request.method == 'GET':
             return UserReadSerializer
         elif self.request.method in ['PUT', 'PATCH']:
-            return UserCreateSerializer
+            return UserUpdateSerializer
         return NotFound('Method not allowed')
