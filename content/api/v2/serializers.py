@@ -1,6 +1,7 @@
 from rest_framework import serializers
 from content.models import Post, Comment
 from taggit.models import Tag
+from taggit.serializers import TagListSerializerField
 
 
 class TagSerializer(serializers.ModelSerializer):
@@ -12,14 +13,11 @@ class TagSerializer(serializers.ModelSerializer):
 
 
 class SimilarPostsSerializer(serializers.ModelSerializer):
-    tags = serializers.SerializerMethodField()
+    tags = TagListSerializerField()
 
     class Meta:
         model = Post
         fields = ['id', 'title', 'tags']
-
-    def get_tags(self, obj):
-        return obj.tags.values_list('name', flat=True)
 
 
 class PostReadSerializer(serializers.ModelSerializer):
@@ -50,7 +48,7 @@ class PostReadSerializer(serializers.ModelSerializer):
 
     def get_fields(self):
         fields = super().get_fields()
-        if self.context['action'] == 'list':
+        if self.context['action'] in ['list', 'search']:
             fields.pop('similar_posts')
         return fields
 
@@ -88,6 +86,9 @@ class CommentReadSerializer(serializers.ModelSerializer):
 
 
 class CommentCreateUpdateSerializer(serializers.ModelSerializer):
+    user = serializers.StringRelatedField(read_only=True)
+    post = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = Comment
         fields = ['post', 'body', 'active']

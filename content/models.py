@@ -35,8 +35,10 @@ class Post(models.Model):
     publish = models.DateTimeField(default=timezone.now)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    users_liked = models.ManyToManyField(USER, related_name='liked_posts')
-    users_disliked = models.ManyToManyField(USER, related_name='disliked_posts')
+    users_liked = models.ManyToManyField(USER, related_name='liked_posts',
+                                         blank=True)
+    users_disliked = models.ManyToManyField(USER, related_name='disliked_posts',
+                                            blank=True)
     status = models.CharField(max_length=10,
                               choices=Status.choices,
                               default=Status.DRAFT)

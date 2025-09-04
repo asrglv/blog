@@ -72,14 +72,22 @@ class PostViewSet(ModelViewSet):
 
         if status is not None and is_access:
             if status == 'all':
-                return Post.objects.all()
+                return Post.objects.prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
             elif status == 'draft':
-                return Post.draft.all()
+                return Post.draft.prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
 
         if self.action != 'list' and is_access:
-            return Post.objects.all()
+            return Post.objects.prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
 
-        return Post.published.all()
+        return Post.published.prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
@@ -113,15 +121,24 @@ class SearchAPIView(APIView):
             if status == 'all' and is_access:
                 posts = Post.objects.annotate(
                     similarity=TrigramSimilarity('title', query)
-                ).filter(similarity__gte=search_rating).order_by('-similarity')
+                ).filter(similarity__gte=search_rating
+                         ).order_by('-similarity').prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
             elif status == 'draft' and is_access:
                 posts = Post.draft.annotate(
                     similarity=TrigramSimilarity('title', query)
-                ).filter(similarity__gte=search_rating).order_by('-similarity')
+                ).filter(similarity__gte=search_rating
+                         ).order_by('-similarity').prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
             else:
                 posts = Post.published.annotate(
                     similarity=TrigramSimilarity('title', query)
-                ).filter(similarity__gte=search_rating).order_by('-similarity')
+                ).filter(similarity__gte=search_rating
+                         ).order_by('-similarity').prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
 
             paginator = PostPagination()
             page = paginator.paginate_queryset(posts, request)
@@ -143,12 +160,17 @@ class CommentViewSet(ModelViewSet):
         permission = IsSuperuser()
         is_access = permission.has_permission(self.request, self)
 
+        if self.action != 'list' and is_access:
+            return Comment.objects.all().select_related('user', 'post')
+
         if status is not None and is_access:
             if status == 'all':
-                return Comment.objects.all()
+                return Comment.objects.all().select_related('user', 'post')
             elif status == 'disabled':
-                return Comment.objects.filter(active=False)
-        return Comment.objects.filter(active=True)
+                return Comment.objects.filter(
+                    active=False).select_related('user', 'post')
+        return Comment.objects.filter(
+            active=True).select_related('user', 'post')
 
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
