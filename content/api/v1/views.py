@@ -8,7 +8,8 @@ from rest_framework.generics import GenericAPIView
 from rest_framework import permissions
 from content.models import Post, Comment
 from taggit.models import Tag
-from .serializers import (PostReadSerializer,
+from .serializers import (PostListSerializer,
+                          PostRetrieveSerializer,
                           PostCreateUpdateSerializer,
                           TagSerializer,
                           CommentReadSerializer,
@@ -121,8 +122,10 @@ class PostViewSet(ModelViewSet):
                 ).select_related('author')
 
     def get_serializer_class(self):
-        if self.action in ['list', 'retrieve']:
-            return PostReadSerializer
+        if self.action == 'list':
+            return PostListSerializer
+        elif self.action == 'retrieve':
+            return PostRetrieveSerializer
         elif self.action in ['create', 'update', 'partial_update']:
             return PostCreateUpdateSerializer
         return NotFound("Method not allowed")
@@ -183,7 +186,7 @@ class SearchAPIView(APIView):
             paginator = PostPagination()
             page = paginator.paginate_queryset(posts, request)
 
-            serializer = PostReadSerializer(page, many=True, context=context)
+            serializer = PostListSerializer(page, many=True, context=context)
             return paginator.get_paginated_response(serializer.data)
         return Response()
 

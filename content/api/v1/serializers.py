@@ -30,11 +30,11 @@ class SimilarPostsSerializer(serializers.ModelSerializer):
         fields = ['id', 'title', 'tags']
 
 
-class PostReadSerializer(serializers.ModelSerializer):
+class PostListSerializer(serializers.ModelSerializer):
     """
-    Serializer for the Post model.
+    Serializer for Post model.
 
-    Used for representing posts.
+    Used for representing list posts.
     """
     tags = TagSerializer(many=True, read_only=True)
     author_username = serializers.SerializerMethodField()
@@ -42,8 +42,32 @@ class PostReadSerializer(serializers.ModelSerializer):
         read_only=True,
         source='author'
     )
-    users_liked = serializers.StringRelatedField(many=True, read_only=True)
-    users_disliked = serializers.StringRelatedField(many=True, read_only=True)
+
+    class Meta:
+        model = Post
+        fields = ['id', 'title', 'slug', 'author_id',
+                  'author_username', 'author_email', 'body',
+                  'publish', 'created_at', 'updated_at',
+                  'likes', 'dislikes', 'comments_count', 'tags','status']
+
+    def get_author_username(self, obj):
+        return obj.author.username
+
+
+class PostRetrieveSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Post model.
+
+    Used for representing retrieve posts.
+    """
+    tags = TagSerializer(many=True, read_only=True)
+    author_username = serializers.SerializerMethodField()
+    author_email = serializers.StringRelatedField(
+        read_only=True,
+        source='author'
+    )
+    users_liked = serializers.SerializerMethodField()
+    users_disliked = serializers.SerializerMethodField()
     similar_posts = serializers.SerializerMethodField()
     comments = serializers.SerializerMethodField()
 
@@ -59,24 +83,21 @@ class PostReadSerializer(serializers.ModelSerializer):
     def get_author_username(self, obj):
         return obj.author.username
 
+    def get_users_liked(self, obj):
+        return obj.users_liked.values_list('username', flat=True)[:5]
+
+    def get_users_disliked(self, obj):
+        return obj.users_disliked.values_list('username', flat=True)[:5]
+
     def get_similar_posts(self, obj):
         tags_ids = obj.tags.values_list('id', flat=True)
         similar_posts = Post.published.filter(
-            tags__in=tags_ids).exclude(id=obj.id).distinct()
+            tags__in=tags_ids).exclude(id=obj.id).distinct()[:5]
         return SimilarPostsSerializer(similar_posts, many=True).data
 
     def get_comments(self, obj):
         comments = obj.comments.select_related('user').filter(active=True)[:5]
         return CommentReadSerializer(comments, many=True).data
-
-    def get_fields(self):
-        fields = super().get_fields()
-        if self.context['action'] in ['list', 'search']:
-            fields.pop('similar_posts')
-            fields.pop('users_liked')
-            fields.pop('users_disliked')
-            fields.pop('comments')
-        return fields
 
 
 class PostCreateUpdateSerializer(serializers.ModelSerializer):
