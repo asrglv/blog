@@ -4,7 +4,7 @@ from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.views import APIView
 from rest_framework.response import Response
-from rest_framework.generics import GenericAPIView
+from rest_framework.generics import GenericAPIView, ListAPIView
 from rest_framework import permissions
 from content.models import Post, Comment
 from taggit.models import Tag
@@ -18,6 +18,8 @@ from .serializers import (PostListSerializer,
 from content.api.permissions import (IsSuperuser,
                                      IsOwnerOrReadOnlyOrSuperuser,
                                      is_owner_or_superuser)
+from redis import StrictRedis
+from django.conf import settings
 
 
 class PaginationMixin:
@@ -298,3 +300,18 @@ class DislikeAPIView(GenericAPIView):
         return Response(
             {'detail': f'User {user.username} disliked post {post}'}
         )
+
+
+class PopularPostListAPIView(ListAPIView):
+    """
+    API endpoint for representing popular posts.
+    """
+    def get_queryset(self):
+        redis_client = StrictRedis.from_url(settings.REDIS_URL)
+        posts_ids = redis_client.zrevrange('popular_posts', 0, 9)
+        return Post.published.filter(id__in=posts_ids).prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author').order_by('-likes')
+
+    def get_serializer_class(self):
+        return PostListSerializer

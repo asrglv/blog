@@ -163,3 +163,15 @@ SIMPLE_JWT = {
 CORS_ALLOW_ALL_ORIGINS = True
 
 INTERNAL_IPS = ['127.0.0.1']
+
+# CACHES = {
+#     'default': {
+#         'BACKEND': 'django_redis.cache.RedisCache',
+#         'LOCATION': os.environ.get('REDIS_URL'),
+#         'OPTIONS': {
+#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+#         }
+#     }
+# }
+
+REDIS_URL = os.environ.get('REDIS_URL')

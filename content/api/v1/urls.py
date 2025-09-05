@@ -5,7 +5,8 @@ from .views import (PostViewSet,
                     SearchAPIView,
                     CommentViewSet,
                     LikeAPIView,
-                    DislikeAPIView)
+                    DislikeAPIView,
+                    PopularPostListAPIView)
 
 
 router = SimpleRouter()
@@ -13,9 +14,11 @@ router.register(r'posts', PostViewSet, basename='posts')
 router.register('tags', TagViewSet, basename='tags')
 router.register(r'comments', CommentViewSet, basename='comments')
 
+
 urlpatterns = [
     path('like/', LikeAPIView.as_view(), name='like'),
     path('dislike/', DislikeAPIView.as_view(), name='dislike'),
     path('search/', SearchAPIView.as_view(), name='search'),
+    path('posts/popular/', PopularPostListAPIView.as_view(), name='popular_posts'),
     path('', include(router.urls)),
 ]

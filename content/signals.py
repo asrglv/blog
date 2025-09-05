@@ -5,6 +5,9 @@ from django.db.models.signals import (m2m_changed,
                                       post_delete)
 from django.dispatch import receiver
 from content.models import Post, Comment
+from redis import StrictRedis
+from django.conf import settings
+
 
 @receiver(m2m_changed, sender=Post.users_liked.through)
 def users_liked_change(sender, instance, **kwargs):
@@ -13,7 +16,14 @@ def users_liked_change(sender, instance, **kwargs):
     when the many-to-many relation 'users_liked' changes.
     """
     instance.likes = instance.users_liked.count()
-    instance.save()
+    instance.save(update_fields=['likes'])
+
+    # Connect to Redis and update the ZSET storing popular posts:
+    redis_client = StrictRedis.from_url(settings.REDIS_URL)
+    redis_client.zadd('popular_posts',
+                      {instance.pk: instance.likes})
+
+    redis_client.zremrangebyrank('popular_posts', 0, -11)
 
 
 @receiver(m2m_changed, sender=Post.users_disliked.through)
@@ -24,6 +34,13 @@ def users_disliked_change(sender, instance, **kwargs):
     """
     instance.dislikes = instance.users_disliked.count()
     instance.save()
+
+    # Connect to Redis and update the ZSET storing popular posts:
+    redis_client = StrictRedis.from_url(settings.REDIS_URL)
+    redis_client.zadd('popular_posts',
+                      {instance.pk: instance.likes})
+
+    redis_client.zremrangebyrank('popular_posts', 0, -11)
 
 
 @receiver(post_save, sender=Comment)
