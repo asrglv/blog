@@ -1,0 +1,58 @@
+services:
+  database:
+    image: postgres
+    container_name: blog-db
+    restart: unless-stopped
+    env_file:
+      - db.env
+    volumes:
+      - ./init-pg-trgm:/docker-entrypoint-initdb.d/init-pg-trgm.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      timeout: 10s
+      interval: 30s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: redis
+    container_name: blog-redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      timeout: 5s
+      interval: 10s
+      retries: 5
+      start_period: 5s
+
+  backend:
+    build: .
+    image: blog-backend
+    container_name: blog-backend-app
+    restart: unless-stopped
+    env_file:
+      - blog.env
+    volumes:
+      - static_volume:/app/static
+    depends_on:
+      database:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+  
+  nginx:
+    image: nginx
+    container_name: nginx-server
+    restart: unless-stopped
+    volumes:
+      - ./nginx:/etc/nginx/templates:ro
+      - static_volume:/app/static:ro
+    ports:
+      - 80:80
+    env_file:
+      - nginx.env
+    depends_on:
+      - backend
+
+volumes:
+  static_volume:

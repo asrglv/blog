@@ -1,0 +1,12 @@
+server {
+    listen 80;
+    location /static/ {
+        alias /app/static/;
+        access_log off;
+    }
+    location / {
+        proxy_pass ${BACKEND_HOST};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+    }
+}

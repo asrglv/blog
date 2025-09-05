@@ -44,11 +44,13 @@ def users_disliked_change(sender, instance, **kwargs):
 
 
 @receiver(post_save, sender=Comment)
-def increment_post_comments_count(sender, instance, created, **kwargs):
+def increment_post_comments_count(sender, instance, created, raw, **kwargs):
     """
     Signal handler to increment the comments_count field
     when a new comment is created for a post.
     """
+    if raw:
+        return
     if created:
         Post.objects.filter(pk=instance.post.pk).update(
             comments_count=models.F('comments_count') + 1
@@ -56,11 +58,13 @@ def increment_post_comments_count(sender, instance, created, **kwargs):
 
 
 @receiver(post_delete, sender=Comment)
-def decrement_post_comments_count(sender, instance, **kwargs):
+def decrement_post_comments_count(sender, instance, raw, **kwargs):
     """
     Signal handler to decrement the comments_count field
     when a comment is deleted from a post.
     """
+    if raw:
+        return
     Post.objects.filter(pk=instance.post.pk).update(
         comments_count=models.F('comments_count') - 1
     )
@@ -69,12 +73,13 @@ def decrement_post_comments_count(sender, instance, **kwargs):
 
 
 @receiver(pre_save, sender=Comment)
-def increment_or_decrement_post_comments_count(sender, instance, **kwargs):
+def increment_or_decrement_post_comments_count(sender, instance, raw, **kwargs):
     """
     Signal handler to adjust the comments_count field
     when the 'active' status of a comment changes.
     """
-
+    if raw:
+        return
     if not instance.pk:
         return
 

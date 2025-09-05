@@ -1,0 +1,17 @@
+docker-compose.yml
+nginx/
+Dockerfile
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.swp
+*.swo
+*.log
+.env
+venv/
+.idea/
+.vscode/
+.git
+.gitignore
+*.env
