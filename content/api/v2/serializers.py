@@ -45,14 +45,16 @@ class PostReadSerializer(serializers.ModelSerializer):
     users_liked = serializers.StringRelatedField(many=True, read_only=True)
     users_disliked = serializers.StringRelatedField(many=True, read_only=True)
     similar_posts = serializers.SerializerMethodField()
+    comments = serializers.SerializerMethodField()
 
     class Meta:
         model = Post
         fields = ['id', 'title', 'slug', 'author_id',
                   'author_username', 'author_email', 'body',
                   'publish', 'created_at', 'updated_at',
-                  'users_liked', 'users_disliked',
-                  'tags', 'similar_posts', 'status']
+                  'likes', 'users_liked', 'dislikes', 'users_disliked',
+                  'comments_count', 'comments', 'tags', 'similar_posts',
+                  'status']
 
     def get_author_username(self, obj):
         return obj.author.username
@@ -60,13 +62,20 @@ class PostReadSerializer(serializers.ModelSerializer):
     def get_similar_posts(self, obj):
         tags_ids = obj.tags.values_list('id', flat=True)
         similar_posts = Post.published.filter(
-            tags__in=tags_ids).exclude(id=obj.id).distinct()
+            tags__in=tags_ids).exclude(id=obj.id).distinct()[:5]
         return SimilarPostsSerializer(similar_posts, many=True).data
+
+    def get_comments(self, obj):
+        comments = obj.comments.select_related('user').filter(active=True)[:5]
+        return CommentReadSerializer(comments, many=True).data
 
     def get_fields(self):
         fields = super().get_fields()
         if self.context['action'] in ['list', 'search']:
             fields.pop('similar_posts')
+            fields.pop('users_liked')
+            fields.pop('users_disliked')
+            fields.pop('comments')
         return fields
 
 
@@ -83,7 +92,7 @@ class PostCreateUpdateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Post
-        fields = ['title', 'body', 'tags', 'status']
+        fields = ['id', 'title', 'body', 'tags', 'status']
 
     def create(self, validated_data):
         """
@@ -131,7 +140,7 @@ class CommentCreateUpdateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = Comment
-        fields = ['post', 'body', 'active']
+        fields = ['id', 'post', 'body', 'active']
 
     def create(self, validated_data):
         """

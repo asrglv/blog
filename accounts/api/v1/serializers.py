@@ -25,7 +25,7 @@ class UserCreateSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'name', 'surname', 'email',
+        fields = ['id', 'username', 'name', 'surname', 'email',
                   'password', 'password2']
 
     def validate_password(self, value):
@@ -53,7 +53,7 @@ class UserUpdateSerializer(serializers.ModelSerializer):
     """
     class Meta:
         model = User
-        fields = ['username', 'name', 'surname', 'email']
+        fields = ['id', 'username', 'name', 'surname', 'email']
 
 
 class ChangePasswordSerializer(serializers.Serializer):

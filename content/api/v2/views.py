@@ -1,7 +1,8 @@
 from django.contrib.postgres.search import TrigramSimilarity
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import IsAuthenticatedOrReadOnly
+from rest_framework.permissions import IsAuthenticatedOrReadOnly, \
+    IsAuthenticated
 from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import permissions
@@ -333,6 +334,7 @@ class LikeAPIView(GenericAPIView):
     API endpoint for liking posts.
     """
     serializer_class = LikeSerializer
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -361,6 +363,7 @@ class DislikeAPIView(GenericAPIView):
     API endpoint for disliking posts.
     """
     serializer_class = LikeSerializer
+    permission_classes = [IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

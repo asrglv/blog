@@ -37,8 +37,11 @@ class Post(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     users_liked = models.ManyToManyField(USER, related_name='liked_posts',
                                          blank=True)
+    likes = models.PositiveIntegerField(default=0)
     users_disliked = models.ManyToManyField(USER, related_name='disliked_posts',
                                             blank=True)
+    dislikes = models.PositiveIntegerField(default=0)
+    comments_count = models.PositiveIntegerField(default=0)
     status = models.CharField(max_length=10,
                               choices=Status.choices,
                               default=Status.DRAFT)
@@ -61,9 +64,9 @@ class Post(models.Model):
 
 class Comment(models.Model):
     user = models.ForeignKey(USER, on_delete=models.CASCADE,
-                             related_name='comments')
-    post = models.ForeignKey(Post, on_delete=models.CASCADE,
                              related_name='commented_on')
+    post = models.ForeignKey(Post, on_delete=models.CASCADE,
+                             related_name='comments')
     body = models.TextField()
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -244,6 +244,7 @@ class LikeAPIView(GenericAPIView):
     API endpoint for liking posts.
     """
     serializer_class = LikeSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -272,6 +273,7 @@ class DislikeAPIView(GenericAPIView):
     API endpoint for disliking posts.
     """
     serializer_class = LikeSerializer
+    permission_classes = [permissions.IsAuthenticated]
 
     def post(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)

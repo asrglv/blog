@@ -6,6 +6,9 @@ SAFE_METHODS = ['GET', 'HEAD', 'OPTIONS']
 
 
 def is_owner_or_superuser(request, view):
+    """
+    Permission method that allows access to owner or a superuser.
+    """
     user = request.user
     if not user.is_authenticated:
         return False
@@ -21,12 +24,19 @@ def is_owner_or_superuser(request, view):
 
 
 class IsSuperuser(BasePermission):
+    """
+    Permission class that allows access to a superuser.
+    """
     def has_permission(self, request, view):
         if request.user.is_authenticated:
             return request.user.is_superuser
 
 
 class IsOwnerOrReadOnlyOrSuperuser(BasePermission):
+    """
+    Permission class that allows read-only access to everyone,
+    but only the object's owner or a superuser can modify it.
+    """
     def has_object_permission(self, request, view, obj=None):
         if request.method in SAFE_METHODS:
             return True
