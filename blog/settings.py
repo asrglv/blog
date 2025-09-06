@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt.token_blacklist',
     'corsheaders',
     'debug_toolbar',
+    'drf_spectacular',
 
     # Django default apps
     'django.contrib.admin',
@@ -151,6 +152,7 @@ REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
 SIMPLE_JWT = {
@@ -164,14 +166,11 @@ CORS_ALLOW_ALL_ORIGINS = True
 
 INTERNAL_IPS = ['127.0.0.1']
 
-# CACHES = {
-#     'default': {
-#         'BACKEND': 'django_redis.cache.RedisCache',
-#         'LOCATION': os.environ.get('REDIS_URL'),
-#         'OPTIONS': {
-#             'CLIENT_CLASS': 'django_redis.client.DefaultClient',
-#         }
-#     }
-# }
-
 REDIS_URL = os.environ.get('REDIS_URL')
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Blog',
+    'DESCRIPTION': 'Documentation for blog',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+}

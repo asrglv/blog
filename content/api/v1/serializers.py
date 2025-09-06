@@ -153,15 +153,15 @@ class CommentReadSerializer(serializers.ModelSerializer):
         fields = '__all__'
 
 
-class CommentCreateUpdateSerializer(serializers.ModelSerializer):
+class CommentCreateSerializer(serializers.ModelSerializer):
     """
     Serializer for the Comment model.
 
-    Used for creating and updating comments.
+    Used for creating comments.
     """
     class Meta:
         model = Comment
-        fields = ['id', 'post', 'body', 'active']
+        fields = ['id', 'post', 'body']
 
     def create(self, validated_data):
         """
@@ -171,15 +171,16 @@ class CommentCreateUpdateSerializer(serializers.ModelSerializer):
         validated_data['user'] = user
         return super().create(validated_data)
 
-    def get_fields(self):
-        """
-        Removes the 'active' field for non-superusers.
-        """
-        fields = super().get_fields()
-        user = self.context['request'].user
-        if not user.is_superuser:
-            fields.pop('active')
-        return fields
+
+class CommentUpdateSerializer(serializers.ModelSerializer):
+    """
+    Serializer for the Comment model.
+
+    Used for updating comments.
+    """
+    class Meta:
+        model = Comment
+        fields = ['id', 'body', 'active']
 
 
 class LikeSerializer(serializers.Serializer):

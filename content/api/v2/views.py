@@ -1,3 +1,5 @@
+from redis import StrictRedis
+from django.conf import settings
 from django.contrib.postgres.search import TrigramSimilarity
 from rest_framework.exceptions import NotFound
 from rest_framework.pagination import PageNumberPagination
@@ -17,13 +19,13 @@ from .serializers import (PostListSerializer,
                           PostCreateUpdateSerializer,
                           TagSerializer,
                           CommentReadSerializer,
-                          CommentCreateUpdateSerializer,
+                          CommentCreateSerializer,
+                          CommentUpdateSerializer,
                           LikeSerializer)
 from content.api.permissions import (IsSuperuser,
                                      is_owner_or_superuser,
                                      IsOwnerOrReadOnlyOrSuperuser)
-from redis import StrictRedis
-from django.conf import settings
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 
 class PaginationMixin:
@@ -107,6 +109,19 @@ class PostListCreateAPIView(ListCreateAPIView):
     """
     pagination_class = PostPagination
 
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='The status of the posts.',
+            )
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         """
         Return a queryset of Post instances based on user permissions and status filter.
@@ -137,14 +152,6 @@ class PostListCreateAPIView(ListCreateAPIView):
         elif self.request.method == 'POST':
             return PostCreateUpdateSerializer
         return NotFound('Method Not allowed')
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.request.method == 'GET':
-            context['action'] = 'list'
-        elif self.request.method == 'POST':
-            context['action'] = 'create'
-        return context
 
     def get_permissions(self):
         if self.request.method == 'POST':
@@ -189,26 +196,107 @@ class PostRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
             return PostCreateUpdateSerializer
         return NotFound('Method Not allowed')
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.request.method == 'GET':
-            context['action'] = 'retrieve'
-        elif self.request.method == 'POST':
-            context['action'] = 'update'
-        elif self.request.method == 'PATCH':
-            context['action'] = 'partial_update'
-        return context
-
     def get_permissions(self):
         return [IsOwnerOrReadOnlyOrSuperuser()]
+
+
+class CommentListCreateAPIView(ListCreateAPIView):
+    """
+    API endpoint for managing comments.
+
+    Provides GET, POST methods for Comment instances.
+    """
+    pagination_class = CommentPagination
+
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='The status of the comments.',
+            )
+        ]
+    )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
+
+    def get_queryset(self):
+        """
+        Return a queryset of Comment instances based on user permissions and status filter.
+
+        Admins can access all comments if 'status' is specified.
+        Non-admins see only active comments.
+        Optimizes queries with select_related.
+        """
+        status = self.request.query_params.get('status', None)
+        is_access = is_owner_or_superuser(self.request, self)
+
+        if status is not None and is_access:
+            if status == 'all':
+                return Comment.objects.all()
+            elif status == 'disabled':
+                return Comment.objects.filter(active=False)
+        return Comment.objects.filter(active=True)
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return CommentReadSerializer
+        return CommentCreateSerializer
+
+    def get_permissions(self):
+        return [IsAuthenticatedOrReadOnly()]
+
+
+class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
+    """
+    API endpoint for managing detailed comments.
+
+    Provides GET, PUT, PATCH, DELETE methods for Comment instances.
+    """
+    def get_queryset(self):
+        """
+        Return a queryset of Comment instances based on user permissions and status filter.
+
+        Admins can access all comments if 'status' is specified.
+        Non-admins see only active comments.
+        Optimizes queries with select_related.
+        """
+        is_access = is_owner_or_superuser(self.request, self)
+        if is_access:
+            return Comment.objects.select_related('user', 'post')
+        return Comment.objects.filter(
+            active=True).select_related('user', 'post')
+
+    def get_serializer_class(self):
+        if self.request.method == 'GET':
+            return CommentReadSerializer
+        return CommentUpdateSerializer
+
+
+    def get_permissions(self):
+        if self.request.method == 'GET':
+            return [permissions.IsAuthenticatedOrReadOnly()]
+        return [IsSuperuser()]
 
 
 class SearchAPIView(APIView):
     """
     API endpoint for searching posts.
     """
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='query',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search query',
+            )
+        ]
+    )
     def get(self, request):
-        context = {'action': 'search'}
         status = request.query_params.get('status', None)
         query = self.request.query_params.get('query', None)
         search_rating = 0.1
@@ -240,97 +328,12 @@ class SearchAPIView(APIView):
             paginator = PostPagination()
             page = paginator.paginate_queryset(posts, request)
 
-            serializer = PostListSerializer(page, many=True, context=context)
+            serializer = PostListSerializer(page, many=True)
             return paginator.get_paginated_response(serializer.data)
         return Response()
 
     def get_queryset(self):
         return Post.published.all()
-
-
-class CommentListCreateAPIView(ListCreateAPIView):
-    """
-    API endpoint for managing comments.
-
-    Provides GET, POST methods for Comment instances.
-    """
-    pagination_class = CommentPagination
-
-    def get_queryset(self):
-        """
-        Return a queryset of Comment instances based on user permissions and status filter.
-
-        Admins can access all comments if 'status' is specified.
-        Non-admins see only active comments.
-        Optimizes queries with select_related.
-        """
-        status = self.request.query_params.get('status', None)
-        is_access = is_owner_or_superuser(self.request, self)
-
-        if status is not None and is_access:
-            if status == 'all':
-                return Comment.objects.all()
-            elif status == 'disabled':
-                return Comment.objects.filter(active=False)
-        return Comment.objects.filter(active=True)
-
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return CommentReadSerializer
-        return CommentCreateUpdateSerializer
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.request.method == 'GET':
-            context['action'] = 'list'
-        elif self.request.method == 'POST':
-            context['action'] = 'create'
-        return context
-
-    def get_permissions(self):
-        return [IsAuthenticatedOrReadOnly()]
-
-
-class CommentRetrieveUpdateDestroyAPIView(RetrieveUpdateDestroyAPIView):
-    """
-    API endpoint for managing detailed comments.
-
-    Provides GET, PUT, PATCH, DELETE methods for Comment instances.
-    """
-    def get_queryset(self):
-        """
-        Return a queryset of Comment instances based on user permissions and status filter.
-
-        Admins can access all comments if 'status' is specified.
-        Non-admins see only active comments.
-        Optimizes queries with select_related.
-        """
-        is_access = is_owner_or_superuser(self.request, self)
-        if is_access:
-            return Comment.objects.select_related('user', 'post')
-        return Comment.objects.filter(
-            active=True).select_related('user', 'post')
-
-    def get_serializer_class(self):
-        if self.request.method == 'GET':
-            return CommentReadSerializer
-        return CommentCreateUpdateSerializer
-
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        if self.request.method == 'GET':
-            context['action'] = 'retrieve'
-        elif self.request.method == 'POST':
-            context['action'] = 'update'
-        elif self.request.method == 'PATCH':
-            context['action'] = 'partial_update'
-        return context
-
-    def get_permissions(self):
-        if self.request.method == 'GET':
-            return [permissions.IsAuthenticatedOrReadOnly()]
-        return [IsSuperuser()]
-
 
 
 class LikeAPIView(GenericAPIView):
