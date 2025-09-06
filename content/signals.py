@@ -58,18 +58,14 @@ def increment_post_comments_count(sender, instance, created, raw, **kwargs):
 
 
 @receiver(post_delete, sender=Comment)
-def decrement_post_comments_count(sender, instance, raw, **kwargs):
+def decrement_post_comments_count(sender, instance, **kwargs):
     """
     Signal handler to decrement the comments_count field
     when a comment is deleted from a post.
     """
-    if raw:
-        return
     Post.objects.filter(pk=instance.post.pk).update(
         comments_count=models.F('comments_count') - 1
     )
-
-
 
 
 @receiver(pre_save, sender=Comment)

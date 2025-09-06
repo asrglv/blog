@@ -13,13 +13,17 @@ from .serializers import (PostListSerializer,
                           PostCreateUpdateSerializer,
                           TagSerializer,
                           CommentReadSerializer,
-                          CommentCreateUpdateSerializer,
-                          LikeSerializer)
+                          CommentCreateSerializer,
+                          LikeSerializer, CommentUpdateSerializer)
 from content.api.permissions import (IsSuperuser,
                                      IsOwnerOrReadOnlyOrSuperuser,
                                      is_owner_or_superuser)
 from redis import StrictRedis
 from django.conf import settings
+from drf_spectacular.utils import (extend_schema,
+                                   extend_schema_view,
+                                   OpenApiParameter,
+                                   OpenApiTypes)
 
 
 class PaginationMixin:
@@ -73,9 +77,9 @@ class TagViewSet(ModelViewSet):
 
     Provides list, retrieve, create, update, and delete actions
     for Tag instances.
+    Create, update, partial_update, delete actions available for users with administrator permissions.
     """
     pagination_class = TagPagination
-    permission_classes = [permissions.IsAdminUser]
 
     def get_queryset(self):
         return Tag.objects.all()
@@ -83,7 +87,26 @@ class TagViewSet(ModelViewSet):
     def get_serializer_class(self):
         return TagSerializer
 
+    def get_permissions(self):
+        if self.action in ['create', 'update', 'partial_update', 'destroy']:
+            return [permissions.IsAdminUser()]
+        return [permissions.AllowAny()]
 
+
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='The status of the posts. '
+                            'Available for users with administrator permissions.'
+                            'Status values: all, draft, published.',
+            )
+        ]
+    )
+)
 class PostViewSet(ModelViewSet):
     """
     API endpoint for managing posts.
@@ -132,70 +155,26 @@ class PostViewSet(ModelViewSet):
             return PostCreateUpdateSerializer
         return NotFound("Method not allowed")
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['action'] = self.action
-        return context
-
     def get_permissions(self):
         if self.action == 'create':
             return [permissions.IsAuthenticated()]
         return [IsOwnerOrReadOnlyOrSuperuser()]
 
 
-class SearchAPIView(APIView):
-    """
-    API endpoint for searching posts.
-    """
-    def get(self, request):
-        """
-        Return search results of Post instances filtered by user permissions and status.
-
-        Admins can access all posts or drafts if 'status' is specified.
-        Non-admins see only published posts.
-        Optimizes queries with select_related and prefetch_related.
-        """
-
-        context = {'action': 'search'}
-        status = request.query_params.get('status', None)
-        query = self.request.query_params.get('query', None)
-        search_rating = 0.1
-        is_access = is_owner_or_superuser(self.request, self)
-
-        if query is not None:
-            if status == 'all' and is_access:
-                posts = Post.objects.annotate(
-                    similarity=TrigramSimilarity('title', query)
-                ).filter(similarity__gte=search_rating
-                         ).order_by('-similarity').prefetch_related(
-                    'tags', 'users_liked', 'users_disliked'
-                ).select_related('author')
-            elif status == 'draft' and is_access:
-                posts = Post.draft.annotate(
-                    similarity=TrigramSimilarity('title', query)
-                ).filter(similarity__gte=search_rating
-                         ).order_by('-similarity').prefetch_related(
-                    'tags', 'users_liked', 'users_disliked'
-                ).select_related('author')
-            else:
-                posts = Post.published.annotate(
-                    similarity=TrigramSimilarity('title', query)
-                ).filter(similarity__gte=search_rating
-                         ).order_by('-similarity').prefetch_related(
-                    'tags', 'users_liked', 'users_disliked'
-                ).select_related('author')
-
-            paginator = PostPagination()
-            page = paginator.paginate_queryset(posts, request)
-
-            serializer = PostListSerializer(page, many=True, context=context)
-            return paginator.get_paginated_response(serializer.data)
-        return Response()
-
-    def get_queryset(self):
-        return Post.published.all()
-
-
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='The status of the comments. '
+                            'Available for users with administrator permissions.'
+                            'Status values: all, disabled, active.',
+            )
+        ]
+    )
+)
 class CommentViewSet(ModelViewSet):
     """
     API endpoint for managing comments.
@@ -231,17 +210,87 @@ class CommentViewSet(ModelViewSet):
     def get_serializer_class(self):
         if self.action in ['list', 'retrieve']:
             return CommentReadSerializer
-        return CommentCreateUpdateSerializer
+        if self.action == 'create':
+            return CommentCreateSerializer
+        elif self.action in ['update', 'partial_update']:
+            return CommentUpdateSerializer
+        return NotFound("Method not allowed")
 
-    def get_serializer_context(self):
-        context = super().get_serializer_context()
-        context['action'] = self.action
-        return context
 
     def get_permissions(self):
         if self.action in ['list', 'retrieve', 'create']:
             return [permissions.IsAuthenticatedOrReadOnly()]
         return [IsSuperuser()]
+
+
+class SearchAPIView(APIView):
+    """
+    API endpoint for searching posts.
+    """
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                name='query',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search query',
+            ),
+            OpenApiParameter(
+                name='status',
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description='Search status. '
+                            'Available for users with administrator permissions.'
+                            'Status values: all, draft, published.',
+            )
+        ]
+    )
+    def get(self, request):
+        """
+        Return search results of Post instances filtered by user permissions and status.
+
+        Admins can access all posts or drafts if 'status' is specified.
+        Non-admins see only published posts.
+        Optimizes queries with select_related and prefetch_related.
+        """
+
+        status = request.query_params.get('status', None)
+        query = self.request.query_params.get('query', None)
+        search_rating = 0.1
+        is_access = is_owner_or_superuser(self.request, self)
+
+        if query is not None:
+            if status == 'all' and is_access:
+                posts = Post.objects.annotate(
+                    similarity=TrigramSimilarity('title', query)
+                ).filter(similarity__gte=search_rating
+                         ).order_by('-similarity').prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
+            elif status == 'draft' and is_access:
+                posts = Post.draft.annotate(
+                    similarity=TrigramSimilarity('title', query)
+                ).filter(similarity__gte=search_rating
+                         ).order_by('-similarity').prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
+            else:
+                posts = Post.published.annotate(
+                    similarity=TrigramSimilarity('title', query)
+                ).filter(similarity__gte=search_rating
+                         ).order_by('-similarity').prefetch_related(
+                    'tags', 'users_liked', 'users_disliked'
+                ).select_related('author')
+
+            paginator = PostPagination()
+            page = paginator.paginate_queryset(posts, request)
+
+            serializer = PostListSerializer(page, many=True)
+            return paginator.get_paginated_response(serializer.data)
+        return Response()
+
+    def get_queryset(self):
+        return Post.published.all()
 
 
 class LikeAPIView(GenericAPIView):

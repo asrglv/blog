@@ -6,7 +6,7 @@ services:
     env_file:
       - db.env
     volumes:
-      - ./init-pg-trgm:/docker-entrypoint-initdb.d/init-pg-trgm.sql
+      - ./init-pg-trgm.sql:/docker-entrypoint-initdb.d/init-pg-trgm.sql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
       timeout: 10s
