@@ -42,7 +42,7 @@ services:
   
   nginx:
     image: nginx
-    container_name: nginx-server
+    container_name: blog-nginx
     restart: unless-stopped
     volumes:
       - ./nginx:/etc/nginx/templates:ro

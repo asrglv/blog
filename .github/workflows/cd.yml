@@ -1,0 +1,31 @@
+name: CD
+
+on:
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Dockerfile
+        run: docker build -t ${{ secrets.DOCKER_HUB_USER }}/blog:latest .
+
+      - name: Login Docker Hub
+        run: echo '${{ secrets.DOCKER_HUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
+
+      - name: Push docker image
+        run: docker push ${{ secrets.DOCKER_HUB_USER }}/blog:latest
+
+      - name: Connect to server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            cd ${{ vars.PROJECT_PATH }}
+            docker pull ${{secrets.DOCKER_HUB_USER }}/blog:latest
+            docker compose up -d
+            docker image prune -f

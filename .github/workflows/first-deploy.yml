@@ -1,0 +1,69 @@
+name: First deploy
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Setup Docker
+        uses: docker/setup-buildx-action@v2
+
+      - uses: actions/checkout@v4
+
+      - name: Build docker compose
+        run: docker compose -f docker-compose.test.yml up --build --abort-on-container-exit --exit-code-from backend
+
+      - name: Show logs on failre
+        if: failure()
+        run: docker compose logs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build Docker image
+        run: docker build -t ${{ secrets.DOCKER_HUB_USER }}/blog:latest .
+
+      - name: Login Docker Hub
+        run: echo '${{ secrets.DOCKER_HUB_PASSWORD }}' | docker login -u ${{ secrets.DOCKER_HUB_USER }} --password-stdin
+
+      - name: Push image to Docker Hub
+        run: docker push ${{ secrets.DOCKER_HUB_USER }}/blog:latest
+
+      - name: Connect to server via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.SERVER_IP }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          script: |
+            set -e
+            
+            # Creating project directory
+            mkdir -p ${{ vars.PROJECT_PATH }}
+            cd ${{ vars.PROJECT_PATH }}
+            
+            # Downlaoding deployment infrastructure files
+            git clone --branch deploy ${{ vars.REPOSITORY_NAME }}
+            cd blog
+            
+            # Removing .git
+            rm -rf .git .gitignore
+
+            # Creating environment files.
+            echo '${{ secrets.BACKEND_ENV }}' > backend.env
+            echo '${{ secrets.DB_ENV }}' > db.env
+            echo '${{ secrets.NGINX_ENV }}' > nginx.env
+            echo 'HOST_PORT=${{ vars.HOST_PORT }}' >> .env
+            echo 'DOCKER_HUB_USER=${{ secrets.DOCKER_HUB_USER }}' >> .env
+
+            # Pulling the Docker image.
+            docker pull ${{ secrets.DOCKER_HUB_USER }}/blog:latest
+                       
+            # Running docker-compose up.
+            docker compose up -d
+            docker image prune -f

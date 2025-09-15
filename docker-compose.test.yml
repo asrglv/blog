@@ -1,0 +1,28 @@
+services:
+  database:
+    image: postgres
+    environment:
+      - POSTGRES_DB=test
+      - POSTGRES_USER=test
+      - POSTGRES_PASSWORD=test
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test"]
+      timeout: 10s
+      interval: 30s
+      retries: 5
+      start_period: 10s
+
+  backend:
+    build: .
+    environment:
+      - DB_NAME=test
+      - DB_USER=test
+      - DB_PASSWORD=test
+      - DB_HOST=database
+      - DB_PORT=5432
+      - DEBUG=True
+      - SECRET_KEY=test_secret_key
+    command: sh -c "python manage.py test"
+    depends_on:
+      database:
+        condition: service_healthy
