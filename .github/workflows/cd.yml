@@ -25,7 +25,8 @@ jobs:
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
           script: |
-            cd ${{ vars.PROJECT_PATH }}
+            set -e
+            cd ${{ vars.PROJECT_PATH }}/blog
             docker pull ${{secrets.DOCKER_HUB_USER }}/blog:latest
             docker compose up -d
             docker image prune -f
